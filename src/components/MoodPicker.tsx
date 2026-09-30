@@ -5,7 +5,6 @@ import { Sparkles, Coffee, Brain, Zap, Smile, Skull } from 'lucide-react';
 import type { Mood } from '@/types';
 import { titleService } from '@/services/titleService';
 import { TitleCard } from '@/components/TitleCard';
-import { moods } from '@/data/mockData';
 
 const moodIcons: Record<Mood, typeof Coffee> = {
   Cozy: Coffee,
@@ -26,18 +25,19 @@ const moodColors: Record<Mood, string> = {
 export function MoodPicker() {
   const [active, setActive] = useState<Mood | null>(null);
   const navigate = useNavigate();
+  const moods = titleService.getMoods();
 
   const results = active ? titleService.getByMood(active).slice(0, 10) : [];
 
   return (
-    <section className="mt-8 px-6 lg:px-12">
+    <section id="mood-picker" className="mt-8 px-6 lg:px-12 scroll-mt-24">
       <div className="flex items-center gap-2 mb-4">
-        <Sparkles className="w-5 h-5 text-brand-violet" />
-        <h2 className="text-lg sm:text-xl font-display font-semibold text-white/90">AI Mood Picker</h2>
-        <span className="text-xs text-white/40">— Tell us how you feel, we'll find the right watch</span>
+        <Sparkles className="w-5 h-5 text-brand-cyan" />
+        <h2 className="text-lg sm:text-xl font-display font-semibold text-white/90">WatchNext Mood Matcher</h2>
+        <span className="text-xs text-white/40 hidden sm:inline">— Select your vibe, discover the perfect watch</span>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2.5">
         {moods.map((mood) => {
           const Icon = moodIcons[mood];
           const isActive = active === mood;
@@ -64,18 +64,18 @@ export function MoodPicker() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden mt-4"
+            className="overflow-hidden mt-5"
           >
-            <div className="flex gap-3 overflow-x-auto no-scrollbar pb-4">
+            <div className="flex gap-3 overflow-x-auto no-scrollbar pb-4 pt-1">
               {results.map((t, i) => (
                 <TitleCard key={t.id} title={t} index={i} />
               ))}
             </div>
             <button
               onClick={() => navigate(`/browse?mood=${encodeURIComponent(active)}`)}
-              className="text-sm text-brand-cyan hover:text-brand-violet transition font-medium"
+              className="text-sm text-brand-cyan hover:text-brand-violet transition font-medium inline-block mt-1"
             >
-              See all "{active}" picks →
+              See all "{active}" picks in Browse →
             </button>
           </motion.div>
         )}
@@ -83,3 +83,5 @@ export function MoodPicker() {
     </section>
   );
 }
+
+export default MoodPicker;

@@ -2,50 +2,66 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X, Send, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { titles } from '@/data/mockData';
+import { realTitles } from '@/data/realTitles';
 import { PosterImage } from './PosterImage';
+import type { Title } from '@/types';
 
 type Message = {
   id: number;
   role: 'user' | 'ai';
   text: string;
   suggestions?: string[];
-  titles?: typeof titles;
+  titles?: Title[];
 };
 
-const suggestions = [
+const defaultSuggestions = [
   'What should I watch tonight?',
-  'Best sci-fi series under 8 episodes?',
-  'Something cozy for a rainy day',
-  'Hidden gems I might have missed',
+  'Best sci-fi series with mind-bending plots?',
+  'Award-winning drama series to binge',
+  'Hidden gems with high ratings',
 ];
 
 function generateResponse(query: string): Message {
   const q = query.toLowerCase();
-  let picked = titles;
+  let picked = realTitles;
 
-  if (q.includes('sci-fi')) picked = titles.filter((t) => t.genres.includes('Sci-Fi'));
-  else if (q.includes('cozy') || q.includes('rainy')) picked = titles.filter((t) => ['Romance', 'Comedy', 'Drama'].some((g) => t.genres.includes(g)));
-  else if (q.includes('hidden') || q.includes('gem')) picked = titles.filter((t) => t.hiddenGem);
-  else if (q.includes('series')) picked = titles.filter((t) => t.type === 'series');
-  else if (q.includes('movie')) picked = titles.filter((t) => t.type === 'movie');
+  if (q.includes('sci-fi') || q.includes('space') || q.includes('future')) {
+    picked = realTitles.filter((t) => t.genres.includes('Sci-Fi'));
+  } else if (q.includes('drama') || q.includes('award') || q.includes('emmy')) {
+    picked = realTitles.filter((t) => t.genres.includes('Drama'));
+  } else if (q.includes('hidden') || q.includes('gem')) {
+    picked = realTitles.filter((t) => t.hiddenGem || t.votes < 500000);
+  } else if (q.includes('series') || q.includes('show') || q.includes('tv')) {
+    picked = realTitles.filter((t) => t.type === 'series');
+  } else if (q.includes('movie') || q.includes('film')) {
+    picked = realTitles.filter((t) => t.type === 'movie');
+  } else if (q.includes('action') || q.includes('thrill')) {
+    picked = realTitles.filter((t) => t.genres.includes('Action') || t.genres.includes('Thriller'));
+  }
 
-  const top = [...picked].sort((a, b) => b.aiScore - a.aiScore).slice(0, 3);
+  const top = [...picked].sort((a, b) => b.imdbLikeRating - a.imdbLikeRating).slice(0, 3);
+
   const responses: Record<string, string> = {
-    'what should i watch tonight': `Based on your taste profile, here are three picks I think you will love tonight. Each blends your affinity for sci-fi and drama with high audience sentiment.`,
-    'best sci-fi series under 8 episodes': `Great question! Here are tight, bingeable sci-fi series — all under 8 episodes per season — that pack a punch without overstaying.`,
-    'something cozy for a rainy day': `Rainy day? I have got just the thing. These warm, character-driven stories are perfect for curling up with.`,
-    'hidden gems i might have missed': `Oh, you are in for a treat. These are critically adored but flew under the radar — pure hidden gold.`,
+    'what should i watch tonight?':
+      'Here are three sensational recommendations for tonight! Each is critically acclaimed with stellar audience sentiment across the WatchNext platform.',
+    'best sci-fi series with mind-bending plots?':
+      'If you love intricate, high-stakes science fiction with psychological depth, you cannot miss these standout series:',
+    'award-winning drama series to binge':
+      'These acclaimed productions swept critics and viewers with masterclass storytelling and powerhouse acting:',
+    'hidden gems with high ratings':
+      'Here are high-rated gems that deliver unforgettable experiences without the massive blockbuster marketing noise:',
   };
 
-  const matched = responses[q] ?? `Here are some titles I think you will enjoy based on "${query}". I picked these using your taste profile and audience sentiment data.`;
+  const matched =
+    responses[q] ||
+    `Here are high-match titles curated for you based on "${query}". Selected using WatchNext AI score and verified ratings.`;
 
   return {
     id: Date.now(),
     role: 'ai',
     text: matched,
     titles: top,
-    suggestions: top.length > 0 ? ['Tell me more about one of these', 'Something different', 'Show me more like this'] : [],
+    suggestions: top.length > 0 ? ['Tell me more about the first pick', 'Give me something different', 'Show top-rated movies'] : [],
   };
 }
 
@@ -55,8 +71,8 @@ export function ChatWidget() {
     {
       id: 0,
       role: 'ai',
-      text: "Hi! I'm CineSense AI. Ask me what to watch, describe a mood, or request a specific type of title. I'm here to help you find your next favorite.",
-      suggestions,
+      text: "Hi! I'm WatchNext AI. Tell me what mood you're in, your favorite genres, or ask for specific movie and TV series recommendations. I'm here to find your next great watch.",
+      suggestions: defaultSuggestions,
     },
   ]);
   const [input, setInput] = useState('');
@@ -76,17 +92,17 @@ export function ChatWidget() {
     setTimeout(() => {
       setTyping(false);
       setMessages((prev) => [...prev, generateResponse(text)]);
-    }, 1200);
+    }, 700);
   };
 
   return (
     <>
       <motion.button
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
+        whileHover={{ scale: 1.08 }}
+        whileTap={{ scale: 0.92 }}
         onClick={() => setOpen(!open)}
         className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-brand-gradient shadow-glow flex items-center justify-center focus-ring"
-        aria-label="Ask CineSense"
+        aria-label="Ask WatchNext AI"
       >
         <AnimatePresence mode="wait">
           {open ? (
@@ -104,57 +120,81 @@ export function ChatWidget() {
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.9 }}
+            initial={{ opacity: 0, y: 20, scale: 0.92 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            exit={{ opacity: 0, y: 20, scale: 0.92 }}
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-            className="fixed bottom-24 right-6 z-50 w-[calc(100vw-3rem)] sm:w-96 h-[520px] glass-strong rounded-2xl flex flex-col shadow-card-hover overflow-hidden"
+            className="fixed bottom-24 right-6 z-50 w-[calc(100vw-3rem)] sm:w-96 h-[530px] glass-strong rounded-2xl flex flex-col shadow-2xl border border-white/15 overflow-hidden"
           >
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10">
-              <div className="w-8 h-8 rounded-lg bg-brand-gradient flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-white" />
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-ink-900/70">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-brand-gradient flex items-center justify-center shadow-glow">
+                  <Sparkles className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-white">Ask WatchNext</p>
+                  <p className="text-[10px] text-brand-cyan">AI Movie & TV Companion • Online</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-semibold text-white">Ask CineSense</p>
-                <p className="text-[10px] text-brand-cyan">AI Assistant • Online</p>
-              </div>
+              <button
+                onClick={() => setOpen(false)}
+                className="p-1 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
-            <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+            {/* Chat Messages */}
+            <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3.5">
               {messages.map((msg) => (
                 <motion.div
                   key={msg.id}
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   className={msg.role === 'user' ? 'flex justify-end' : 'flex justify-start'}
                 >
-                  <div className={`max-w-[85%] ${msg.role === 'user' ? 'bg-brand-gradient text-white' : 'bg-white/10 text-white/90'} rounded-2xl px-3 py-2 text-sm`}>
-                    <p>{msg.text}</p>
+                  <div
+                    className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm ${
+                      msg.role === 'user'
+                        ? 'bg-brand-gradient text-white shadow-glow'
+                        : 'bg-white/10 text-white/90 border border-white/10'
+                    }`}
+                  >
+                    <p className="leading-relaxed">{msg.text}</p>
                     {msg.titles && msg.titles.length > 0 && (
-                      <div className="mt-2 space-y-1.5">
+                      <div className="mt-3 space-y-2">
                         {msg.titles.map((t) => (
                           <Link
                             key={t.id}
                             to={`/title/${t.id}`}
                             onClick={() => setOpen(false)}
-                            className="flex items-center gap-2 bg-black/30 rounded-lg p-1.5 hover:bg-black/50 transition"
+                            className="flex items-center gap-2.5 bg-black/40 border border-white/10 rounded-xl p-2 hover:bg-white/15 transition group"
                           >
-                            <PosterImage title={t} className="w-8 h-12 rounded shrink-0" />
-                            <div className="min-w-0">
-                              <p className="text-xs font-medium truncate">{t.name}</p>
-                              <p className="text-[10px] text-white/50">{t.year} • ★ {t.imdbLikeRating}</p>
+                            <PosterImage title={t} className="w-10 h-14 rounded-lg shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-semibold text-white group-hover:text-brand-cyan transition truncate">
+                                {t.name}
+                              </p>
+                              <p className="text-[10px] text-white/50">
+                                {t.year} • {t.type === 'series' ? 'TV' : 'Movie'} • ⭐ {t.imdbLikeRating}
+                              </p>
+                              <span className="text-[9px] bg-brand-cyan/20 text-brand-cyan font-bold px-1.5 py-0.5 rounded mt-0.5 inline-block">
+                                {t.aiMatch}% Match
+                              </span>
                             </div>
                           </Link>
                         ))}
                       </div>
                     )}
+
                     {msg.suggestions && msg.suggestions.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mt-2">
+                      <div className="flex flex-wrap gap-1.5 mt-3 pt-2 border-t border-white/10">
                         {msg.suggestions.map((s) => (
                           <button
                             key={s}
                             onClick={() => send(s)}
-                            className="text-[11px] bg-white/10 hover:bg-white/20 px-2 py-1 rounded-full transition"
+                            className="text-[11px] bg-white/10 hover:bg-white/20 text-white/80 rounded-full px-2.5 py-1 transition text-left"
                           >
                             {s}
                           </button>
@@ -164,35 +204,38 @@ export function ChatWidget() {
                   </div>
                 </motion.div>
               ))}
+
               {typing && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start">
-                  <div className="bg-white/10 rounded-2xl px-4 py-3 flex gap-1">
-                    {[0, 1, 2].map((i) => (
-                      <motion.span
-                        key={i}
-                        animate={{ opacity: [0.3, 1, 0.3] }}
-                        transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
-                        className="w-1.5 h-1.5 bg-white/60 rounded-full"
-                      />
-                    ))}
-                  </div>
-                </motion.div>
+                <div className="flex items-center gap-1.5 text-white/40 text-xs px-2 py-1">
+                  <span className="w-2 h-2 bg-brand-cyan rounded-full animate-bounce" />
+                  <span className="w-2 h-2 bg-brand-violet rounded-full animate-bounce [animation-delay:0.2s]" />
+                  <span className="w-2 h-2 bg-pink-500 rounded-full animate-bounce [animation-delay:0.4s]" />
+                  <span className="ml-1 text-[11px]">WatchNext AI is thinking...</span>
+                </div>
               )}
             </div>
 
+            {/* Input Bar */}
             <form
-              onSubmit={(e) => { e.preventDefault(); send(input); }}
-              className="flex items-center gap-2 px-3 py-3 border-t border-white/10"
+              onSubmit={(e) => {
+                e.preventDefault();
+                send(input);
+              }}
+              className="p-3 border-t border-white/10 bg-ink-900/60 flex items-center gap-2"
             >
               <input
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask anything..."
-                className="flex-1 bg-white/5 text-sm text-white placeholder-white/40 rounded-full px-4 py-2 outline-none focus:bg-white/10 transition"
+                placeholder="Ask WatchNext AI anything..."
+                className="flex-1 bg-white/5 text-sm text-white placeholder-white/30 rounded-xl px-3 py-2 outline-none focus:bg-white/10 transition border border-white/10"
               />
-              <button type="submit" className="w-9 h-9 rounded-full bg-brand-gradient flex items-center justify-center shrink-0 hover:shadow-glow transition" aria-label="Send">
-                <Send className="w-4 h-4 text-white" />
+              <button
+                type="submit"
+                disabled={!input.trim()}
+                className="w-9 h-9 rounded-xl bg-brand-gradient flex items-center justify-center text-white disabled:opacity-40 hover:shadow-glow transition shrink-0"
+              >
+                <Send className="w-4 h-4" />
               </button>
             </form>
           </motion.div>
@@ -201,3 +244,5 @@ export function ChatWidget() {
     </>
   );
 }
+
+export default ChatWidget;

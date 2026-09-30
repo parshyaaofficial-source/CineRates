@@ -5,22 +5,24 @@ import { HeroCarousel } from '@/components/HeroCarousel';
 import { RowSection } from '@/components/Carousel';
 import { MoodPicker } from '@/components/MoodPicker';
 import { Footer } from '@/components/Footer';
-import { genres } from '@/data/mockData';
+import { genresList } from '@/data/realTitles';
 
 export function HomePage() {
   const rows = useMemo(() => [
     { title: 'Top 10 Today', data: titleService.getTop10Today(), numbered: true },
-    { title: 'Recommended For You (AI)', data: titleService.getAllTitles().filter((t) => t.aiMatch && t.aiMatch >= 85).slice(0, 12) },
     { title: 'Trending Now', data: titleService.getTrending() },
+    { title: 'New Releases', data: titleService.getNewReleases() },
     { title: 'Top Rated of All Time', data: titleService.getTopRated() },
-    { title: 'Critically Acclaimed', data: titleService.getCriticallyAcclaimed() },
+    { title: 'Popular Movies & Series', data: titleService.getPopular() },
+    { title: 'Recommended For You (AI)', data: titleService.getAllTitles().filter((t) => (t.aiMatch ?? 0) >= 88).slice(0, 12) },
+    { title: 'Critically Acclaimed Masterpieces', data: titleService.getCriticallyAcclaimed() },
     { title: 'Binge-Worthy Series', data: titleService.getBingeWorthySeries() },
-    { title: 'Hidden Gems (AI picked)', data: titleService.getHiddenGems() },
-    { title: 'Because you watched The Fracture', data: titleService.getSimilar('s1') },
+    { title: 'Hidden Gems (WatchNext Curated)', data: titleService.getHiddenGems() },
+    { title: 'Because you loved Dune: Part Two', data: titleService.getSimilar('m-dune-2') },
   ], []);
 
   const genreRows = useMemo(() => {
-    return genres.slice(0, 6).map((g) => ({
+    return genresList.slice(0, 6).map((g) => ({
       title: g,
       data: titleService.getByGenre(g).slice(0, 12),
     }));
@@ -33,7 +35,7 @@ export function HomePage() {
       <div className="relative z-10 -mt-16 pb-8">
         <MoodPicker />
 
-        {rows.map((row, i) => (
+        {rows.map((row) => (
           <motion.div
             key={row.title}
             initial={{ opacity: 0, y: 24 }}

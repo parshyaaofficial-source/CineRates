@@ -1,5 +1,9 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
-import { currentUser } from '@/data/mockData';
+/**
+ * WatchlistContext — now delegates to UserContext for persistence.
+ * Kept for backward compatibility with existing components.
+ */
+import { createContext, useContext, type ReactNode } from 'react';
+import { useUser } from '@/context/UserContext';
 
 type WatchlistContextType = {
   watchlist: string[];
@@ -16,25 +20,44 @@ type WatchlistContextType = {
 const WatchlistContext = createContext<WatchlistContextType | null>(null);
 
 export function WatchlistProvider({ children }: { children: ReactNode }) {
-  const [watchlist, setWatchlist] = useState<string[]>(currentUser.watchlist);
-  const [watched, setWatched] = useState<string[]>(currentUser.watched);
-  const [ratings, setRatings] = useState<Record<string, number>>(currentUser.ratings);
+  const {
+    bucketList,
+    isInBucketList,
+    addToBucketList,
+    removeFromBucketList,
+    watched,
+    ratings,
+    toggleWatched,
+    isWatched,
+    rateTitle,
+    getRating,
+  } = useUser();
 
-  const isInWatchlist = (id: string) => watchlist.includes(id);
+  const watchlist = bucketList.map((b) => b.titleId);
+
+  const isInWatchlist = (id: string) => isInBucketList(id);
   const toggleWatchlist = (id: string) => {
-    setWatchlist((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    if (isInBucketList(id)) {
+      removeFromBucketList(id);
+    } else {
+      addToBucketList(id);
+    }
   };
-  const isWatched = (id: string) => watched.includes(id);
-  const toggleWatched = (id: string) => {
-    setWatched((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-  };
-  const rateTitle = (id: string, rating: number) => {
-    setRatings((prev) => ({ ...prev, [id]: rating }));
-  };
-  const getRating = (id: string) => ratings[id];
 
   return (
-    <WatchlistContext.Provider value={{ watchlist, watched, ratings, isInWatchlist, toggleWatchlist, isWatched, toggleWatched, rateTitle, getRating }}>
+    <WatchlistContext.Provider
+      value={{
+        watchlist,
+        watched,
+        ratings,
+        isInWatchlist,
+        toggleWatchlist,
+        isWatched,
+        toggleWatched,
+        rateTitle,
+        getRating,
+      }}
+    >
       {children}
     </WatchlistContext.Provider>
   );

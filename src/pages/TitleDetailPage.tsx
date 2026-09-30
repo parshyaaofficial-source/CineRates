@@ -12,6 +12,7 @@ import { StarInput } from '@/components/StarInput';
 import { Carousel } from '@/components/Carousel';
 import { Footer } from '@/components/Footer';
 import { SkeletonDetail } from '@/components/Skeletons';
+import { TrailerModal } from '@/components/TrailerModal';
 import { useWatchlist } from '@/context/WatchlistContext';
 import { useToast } from '@/context/ToastContext';
 import type { Review } from '@/types';
@@ -132,10 +133,10 @@ export function TitleDetailPage() {
                   {watched ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
                   {watched ? 'Watched' : 'Mark Watched'}
                 </button>
-                <button onClick={() => showToast('Link copied to clipboard')} className="flex items-center gap-2 glass text-white font-semibold px-5 py-2.5 rounded-xl hover:bg-white/20 transition border border-white/10">
+                <button onClick={() => { if (navigator.clipboard) { navigator.clipboard.writeText(window.location.href); } showToast(`Link to ${title.name} copied to clipboard`); }} className="flex items-center gap-2 glass text-white font-semibold px-5 py-2.5 rounded-xl hover:bg-white/20 transition border border-white/10">
                   <Share2 className="w-5 h-5" /> Share
                 </button>
-                <button onClick={() => showToast('Added to custom list')} className="flex items-center gap-2 glass text-white font-semibold px-5 py-2.5 rounded-xl hover:bg-white/20 transition border border-white/10">
+                <button onClick={() => showToast(`Added ${title.name} to Custom Favorites`)} className="flex items-center gap-2 glass text-white font-semibold px-5 py-2.5 rounded-xl hover:bg-white/20 transition border border-white/10">
                   <ListPlus className="w-5 h-5" /> List
                 </button>
               </div>
@@ -146,7 +147,7 @@ export function TitleDetailPage() {
           <div className="glass rounded-2xl p-5 lg:w-72 shrink-0">
             <h3 className="text-sm font-semibold text-white/80 mb-4">Ratings & Scores</h3>
             <div className="flex items-center justify-around gap-2 mb-4">
-              <RatingRing value={title.imdbLikeRating} max={10} size={70} label="CineSense" sublabel={`${(title.votes / 1000).toFixed(0)}K votes`} color="#F5C518" />
+              <RatingRing value={title.imdbLikeRating} max={10} size={70} label="WatchNext" sublabel={`${(title.votes / 1000).toFixed(0)}K votes`} color="#F5C518" />
               <RatingRing value={title.criticScore} max={100} size={70} label="Critic" color="#22D3EE" />
               <RatingRing value={aiScoreData.score} max={100} size={70} label="AI Score" color="#7C5CFF" />
             </div>
@@ -217,7 +218,25 @@ export function TitleDetailPage() {
             {activeTab === 'cast' && <CastTab title={title} />}
             {activeTab === 'episodes' && title.type === 'series' && <EpisodesTab episodes={episodes} />}
             {activeTab === 'reviews' && (
-              <ReviewsTab reviews={reviews} onWriteReview={() => setReviewModalOpen(true)} />
+              <ReviewsTab
+                reviews={reviews}
+                onWriteReview={() => setReviewModalOpen(true)}
+                onVote={(revId, helpful) => {
+                  titleService.voteReview(title.id, revId, helpful);
+                  setReviews((prev) =>
+                    prev.map((r) =>
+                      r.id === revId
+                        ? {
+                            ...r,
+                            helpfulCount: helpful ? r.helpfulCount + 1 : r.helpfulCount,
+                            notHelpfulCount: !helpful ? r.notHelpfulCount + 1 : r.notHelpfulCount,
+                          }
+                        : r
+                    )
+                  );
+                  showToast(helpful ? 'Marked review as helpful' : 'Marked review as unhelpful');
+                }}
+              />
             )}
             {activeTab === 'similar' && (
               <div className="-mx-6 lg:-mx-12">
@@ -229,37 +248,12 @@ export function TitleDetailPage() {
         </AnimatePresence>
       </div>
 
-      {/* Trailer Modal */}
-      <AnimatePresence>
-        {trailerOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setTrailerOpen(false)}
-            className="fixed inset-0 z-[90] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="w-full max-w-4xl aspect-video rounded-2xl overflow-hidden glass-strong relative"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button onClick={() => setTrailerOpen(false)} className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full glass flex items-center justify-center hover:bg-white/20 transition">
-                <X className="w-5 h-5 text-white" />
-              </button>
-              <div className="w-full h-full flex items-center justify-center bg-ink-950">
-                <div className="text-center">
-                  <Play className="w-16 h-16 text-white/30 mx-auto mb-3 fill-white/20" />
-                  <p className="text-white/60">Trailer for {title.name}</p>
-                  <p className="text-white/30 text-sm mt-1">Video embed placeholder</p>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Real Video Trailer Modal */}
+      <TrailerModal
+        title={title}
+        isOpen={trailerOpen}
+        onClose={() => setTrailerOpen(false)}
+      />
 
       {/* Write Review Modal */}
       <AnimatePresence>
@@ -268,7 +262,15 @@ export function TitleDetailPage() {
             titleName={title.name}
             onClose={() => setReviewModalOpen(false)}
             onSubmit={(review) => {
-              showToast('Review submitted!');
+              const created = titleService.addReview(title.id, {
+                userName: 'Alex Rivera',
+                userAvatarColors: ['#7C5CFF', '#22D3EE'],
+                rating: review.rating,
+                text: review.text,
+                spoiler: review.spoiler,
+              });
+              setReviews((prev) => [created, ...prev]);
+              showToast('Your review has been published!');
               setReviewModalOpen(false);
             }}
           />
@@ -533,7 +535,15 @@ function EpisodesTab({ episodes }: { episodes: ReturnType<typeof titleService.ge
   );
 }
 
-function ReviewsTab({ reviews, onWriteReview }: { reviews: Review[]; onWriteReview: () => void }) {
+function ReviewsTab({
+  reviews,
+  onWriteReview,
+  onVote,
+}: {
+  reviews: Review[];
+  onWriteReview: () => void;
+  onVote?: (reviewId: string, helpful: boolean) => void;
+}) {
   const [sortBy, setSortBy] = useState<'helpful' | 'newest' | 'highest' | 'lowest'>('helpful');
   const [spoilerRevealed, setSpoilerRevealed] = useState<Record<string, boolean>>({});
 
@@ -591,10 +601,16 @@ function ReviewsTab({ reviews, onWriteReview }: { reviews: Review[]; onWriteRevi
                   <p className="text-sm text-white/70 leading-relaxed">{review.text}</p>
                 )}
                 <div className="flex items-center gap-4 mt-3">
-                  <button className="flex items-center gap-1 text-xs text-white/40 hover:text-white transition">
+                  <button
+                    onClick={() => onVote?.(review.id, true)}
+                    className="flex items-center gap-1.5 text-xs text-white/50 hover:text-brand-cyan transition p-1 rounded hover:bg-white/5"
+                  >
                     <ThumbsUp className="w-3.5 h-3.5" /> Helpful ({review.helpfulCount})
                   </button>
-                  <button className="flex items-center gap-1 text-xs text-white/40 hover:text-white transition">
+                  <button
+                    onClick={() => onVote?.(review.id, false)}
+                    className="flex items-center gap-1.5 text-xs text-white/50 hover:text-rose-400 transition p-1 rounded hover:bg-white/5"
+                  >
                     <ThumbsDown className="w-3.5 h-3.5" /> ({review.notHelpfulCount})
                   </button>
                 </div>
